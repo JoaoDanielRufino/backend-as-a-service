@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
+import java.util.*
+import kotlin.collections.HashMap
 
 @RestController
 @RequestMapping("/model-content")
@@ -21,14 +23,39 @@ class ModelContentController(val modelContentRepository: ModelContentRepository,
         return ResponseEntity.ok(response)
     }
 
+    @GetMapping("/{modelName}/{id}")
+    fun show(@PathVariable id: UUID): ResponseEntity<Optional<ModelContent>> {
+        val modelContent = modelContentRepository.findById(id)
+        return ResponseEntity.ok(modelContent)
+    }
+
     @PostMapping("/{modelName}")
     fun create(@Validated @RequestBody request: HashMap<String, Any>, @PathVariable modelName: String): ResponseEntity<ModelContent> {
-        // 1: find por name em ModelStructre
-        // 2: validar a strutura
-        // 3: Se OK inserir no modelContent
         val modelStructure = modelStructureRepository.findByModelName(modelName)!!
+
+        for ((key, value) in request) {
+            if (!modelStructure.structure.containsKey(key)) {
+                throw Exception("$key does not exists in model structure")
+            } else {
+                val modelStructureType = modelStructure.structure[key]
+                if (value::class.simpleName != modelStructureType) {
+                    throw Exception("type of $key(${value::class.simpleName}) does not match $modelStructureType")
+                }
+            }
+        }
+
         val modelContent = ModelContent(modelStructure = modelStructure, content = request)
         val res = modelContentRepository.save(modelContent)
         return ResponseEntity(res, HttpStatus.CREATED)
+    }
+
+    @DeleteMapping("/{modelName}/{id}")
+    fun delete(@PathVariable id: UUID): ResponseEntity<String> {
+        val modelContent = modelContentRepository.findById(id)
+        if (modelContent.isPresent) {
+            modelContentRepository.deleteById(id)
+            return ResponseEntity(HttpStatus.OK)
+        }
+        return ResponseEntity(HttpStatus.NOT_FOUND)
     }
 }
