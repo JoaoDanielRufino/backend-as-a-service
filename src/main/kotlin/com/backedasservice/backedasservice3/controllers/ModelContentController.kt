@@ -24,29 +24,37 @@ class ModelContentController(val modelContentRepository: ModelContentRepository,
     }
 
     @GetMapping("/{modelName}/{id}")
-    fun show(@PathVariable id: UUID): ResponseEntity<Optional<ModelContent>> {
+    fun show(@PathVariable id: UUID): ResponseEntity<HashMap<String, Any>> {
         val modelContent = modelContentRepository.findById(id)
-        return ResponseEntity.ok(modelContent)
+        if (modelContent.isPresent) {
+            modelContent.get().content.putIfAbsent("id", id)
+            return ResponseEntity.ok(modelContent.get().content)
+        }
+        return ResponseEntity(HttpStatus.NOT_FOUND)
     }
 
     @PostMapping("/{modelName}")
     fun create(@Validated @RequestBody request: HashMap<String, Any>, @PathVariable modelName: String): ResponseEntity<ModelContent> {
-        val modelStructure = modelStructureRepository.findByModelName(modelName)!!
+        val modelStructure = modelStructureRepository.findByModelName(modelName)
 
-        for ((key, value) in request) {
-            if (!modelStructure.structure.containsKey(key)) {
-                throw Exception("$key does not exists in model structure")
-            } else {
-                val modelStructureType = modelStructure.structure[key]
-                if (value::class.simpleName != modelStructureType) {
-                    throw Exception("type of $key(${value::class.simpleName}) does not match $modelStructureType")
+        if (modelStructure != null) {
+            for ((key, value) in request) {
+                if (!modelStructure.structure.containsKey(key)) {
+                    throw Exception("$key does not exists in model structure")
+                } else {
+                    val modelStructureType = modelStructure.structure[key]
+                    if (value::class.simpleName != modelStructureType) {
+                        throw Exception("type of $key(${value::class.simpleName}) does not match $modelStructureType")
+                    }
                 }
             }
+
+            val modelContent = ModelContent(modelStructure = modelStructure, content = request)
+            val res = modelContentRepository.save(modelContent)
+            return ResponseEntity(res, HttpStatus.CREATED)
         }
 
-        val modelContent = ModelContent(modelStructure = modelStructure, content = request)
-        val res = modelContentRepository.save(modelContent)
-        return ResponseEntity(res, HttpStatus.CREATED)
+        return ResponseEntity(HttpStatus.NOT_FOUND)
     }
 
     @DeleteMapping("/{modelName}/{id}")
