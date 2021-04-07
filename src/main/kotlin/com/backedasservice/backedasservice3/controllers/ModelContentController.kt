@@ -3,6 +3,7 @@ package com.backedasservice.backedasservice3.controllers
 import com.backedasservice.backedasservice3.models.ModelContent
 import com.backedasservice.backedasservice3.repositories.ModelContentRepository
 import com.backedasservice.backedasservice3.repositories.ModelStructureRepository
+import com.backedasservice.backedasservice3.services.StructureValidatorService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -12,7 +13,11 @@ import kotlin.collections.HashMap
 
 @RestController
 @RequestMapping("/model-content")
-class ModelContentController(val modelContentRepository: ModelContentRepository, val modelStructureRepository: ModelStructureRepository) {
+class ModelContentController(
+    val modelContentRepository: ModelContentRepository,
+    val modelStructureRepository: ModelStructureRepository,
+    val structureValidatorService: StructureValidatorService
+    ) {
     @GetMapping("/{modelName}")
     fun index(@PathVariable modelName: String): ResponseEntity<Iterable<HashMap<String, Any>>> {
         val modelContents = modelContentRepository.findByModelStructureModelName(modelName)
@@ -38,20 +43,15 @@ class ModelContentController(val modelContentRepository: ModelContentRepository,
         val modelStructure = modelStructureRepository.findByModelName(modelName)
 
         if (modelStructure != null) {
-            for ((key, value) in request) {
-                if (!modelStructure.structure.containsKey(key)) {
-                    throw Exception("$key does not exists in model structure")
-                } else {
-                    val modelStructureType = modelStructure.structure[key]
-                    if (value::class.simpleName != modelStructureType) {
-                        throw Exception("type of $key(${value::class.simpleName}) does not match $modelStructureType")
-                    }
-                }
+            return try {
+                structureValidatorService.execute(modelStructure, request)
+                val modelContent = ModelContent(modelStructure = modelStructure, content = request)
+                val res = modelContentRepository.save(modelContent)
+                ResponseEntity(res, HttpStatus.CREATED)
+            } catch (e: Exception) {
+                println(e.message)
+                ResponseEntity(HttpStatus.BAD_REQUEST)
             }
-
-            val modelContent = ModelContent(modelStructure = modelStructure, content = request)
-            val res = modelContentRepository.save(modelContent)
-            return ResponseEntity(res, HttpStatus.CREATED)
         }
 
         return ResponseEntity(HttpStatus.NOT_FOUND)
