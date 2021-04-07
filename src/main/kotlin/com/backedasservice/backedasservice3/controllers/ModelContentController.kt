@@ -57,6 +57,17 @@ class ModelContentController(
         return ResponseEntity(HttpStatus.NOT_FOUND)
     }
 
+    @PutMapping("/{modelName}/{id}")
+    fun update(@Validated @RequestBody request: HashMap<String, Any>, @PathVariable id: UUID): ResponseEntity<ModelContent> {
+        val modelContent = modelContentRepository.findById(id)
+        if (modelContent.isPresent) {
+            modelContent.get().content = request
+            modelContentRepository.save(modelContent.get())
+            return ResponseEntity.ok(modelContent.get())
+        }
+        return ResponseEntity(HttpStatus.NOT_FOUND)
+    }
+
     @DeleteMapping("/{modelName}/{id}")
     fun delete(@PathVariable id: UUID): ResponseEntity<String> {
         val modelContent = modelContentRepository.findById(id)

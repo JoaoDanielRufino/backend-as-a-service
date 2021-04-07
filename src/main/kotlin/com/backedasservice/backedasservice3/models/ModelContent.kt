@@ -19,5 +19,5 @@ data class ModelContent(
 
     @Type(type = "jsonb")
     @Column(name = "content", nullable = false, columnDefinition = "text")
-    val content: HashMap<String, Any>
+    var content: HashMap<String, Any>
 )
