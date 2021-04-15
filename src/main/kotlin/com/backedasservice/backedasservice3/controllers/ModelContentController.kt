@@ -20,12 +20,18 @@ class ModelContentController(
     ) {
     @GetMapping("/{modelName}")
     fun index(@PathVariable modelName: String): ResponseEntity<Iterable<HashMap<String, Any>>> {
-        val modelContents = modelContentRepository.findByModelStructureModelName(modelName)
+        val modelStructure = modelStructureRepository.findByModelName(modelName)
 
-        modelContents.forEach{x -> x.content.putIfAbsent("id", x.id)}
-        val response = modelContents.map { x -> x.content }
+        if (modelStructure != null) {
+            val modelContents = modelContentRepository.findByModelStructureModelName(modelName)
 
-        return ResponseEntity.ok(response)
+            modelContents.forEach{x -> x.content.putIfAbsent("id", x.id)}
+            val response = modelContents.map { x -> x.content }
+
+            return ResponseEntity.ok(response)
+        }
+
+        return ResponseEntity(HttpStatus.NOT_FOUND)
     }
 
     @GetMapping("/{modelName}/{id}")
