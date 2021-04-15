@@ -14,7 +14,7 @@ data class ModelStructure(
     @Id
     val id: UUID = UUID.randomUUID(),
 
-    @Column(name = "model_name", nullable = false)
+    @Column(name = "model_name", nullable = false, unique = true)
     val modelName: String,
 
     @Type(type = "jsonb")
